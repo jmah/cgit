@@ -49,6 +49,10 @@ ifeq ($(uname_O),Cygwin)
 	NEEDS_LIBICONV = YesPlease
 endif
 
+ifeq ($(uname_S),Darwin)
+	NEEDS_LIBICONV = YesPlease
+endif
+
 #
 # Let the user override the above settings.
 #
