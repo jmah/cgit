@@ -257,17 +257,28 @@ int filediff_cb(void *priv, mmbuffer_t *mb, int nbuf)
 	return 0;
 }
 
-int cgit_diff_files(const unsigned char *old_sha1,
-		    const unsigned char *new_sha1, unsigned long *old_size,
-		    unsigned long *new_size, int *binary, int context,
-		    int ignorews, linediff_fn fn)
+static const struct userdiff_funcname *diff_funcname_pattern(struct diff_filespec *one)
+{
+	if (!one->driver && S_ISREG(one->mode))
+		one->driver = userdiff_find_by_path(one->path);
+	if (!one->driver)
+		one->driver = userdiff_find_by_name("default");
+	return one->driver->funcname.pattern ? &one->driver->funcname : NULL;
+}
+
+int cgit_diff_files(struct diff_filepair *pair,
+		    unsigned long *old_size, unsigned long *new_size, int *binary,
+		    int context, int ignorews, linediff_fn fn)
 {
 	mmfile_t file1, file2;
 	xpparam_t diff_params;
 	xdemitconf_t emit_params;
 	xdemitcb_t emit_cb;
+	const struct userdiff_funcname *pe;
 
-	if (!load_mmfile(&file1, old_sha1) || !load_mmfile(&file2, new_sha1))
+	git_config(git_diff_ui_config, NULL);
+	if (!load_mmfile(&file1, pair->one->sha1) ||
+	    !load_mmfile(&file2, pair->two->sha1))
 		return 1;
 
 	*old_size = file1.size;
@@ -283,6 +294,10 @@ int cgit_diff_files(const unsigned char *old_sha1,
 		return 0;
 	}
 
+	pe = diff_funcname_pattern(pair->one);
+	if (!pe)
+		diff_funcname_pattern(pair->two);
+
 	memset(&diff_params, 0, sizeof(diff_params));
 	memset(&emit_params, 0, sizeof(emit_params));
 	memset(&emit_cb, 0, sizeof(emit_cb));
@@ -291,6 +306,8 @@ int cgit_diff_files(const unsigned char *old_sha1,
 		diff_params.flags |= XDF_IGNORE_WHITESPACE;
 	emit_params.ctxlen = context > 0 ? context : 3;
 	emit_params.flags = XDL_EMIT_FUNCNAMES;
+	if (pe)
+		xdiff_set_find_func(&emit_params, pe->pattern, pe->cflags);
 	emit_cb.outf = filediff_cb;
 	emit_cb.priv = fn;
 	xdl_diff(&file1, &file2, &diff_params, &emit_params, &emit_cb);

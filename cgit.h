@@ -11,6 +11,7 @@
 #include <tag.h>
 #include <diff.h>
 #include <diffcore.h>
+#include <userdiff.h>
 #include <refs.h>
 #include <revision.h>
 #include <log-tree.h>
@@ -296,11 +297,9 @@ extern int cgit_refs_cb(const char *refname, const unsigned char *sha1,
 
 extern void *cgit_free_commitinfo(struct commitinfo *info);
 
-extern int cgit_diff_files(const unsigned char *old_sha1,
-			   const unsigned char *new_sha1,
+extern int cgit_diff_files(struct diff_filepair *pair,
 			   unsigned long *old_size, unsigned long *new_size,
-			   int *binary, int context, int ignorews,
-			   linediff_fn fn);
+			   int *binary, int context, int ignorews, linediff_fn fn);
 
 extern void cgit_diff_tree(const unsigned char *old_sha1,
 			   const unsigned char *new_sha1,

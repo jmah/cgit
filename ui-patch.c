@@ -70,8 +70,8 @@ static void filepair_cb(struct diff_filepair *pair)
 			print_line(fmt("+Subproject %s", sha1_to_hex(pair->two->sha1)), 52);
 		return;
 	}
-	if (cgit_diff_files(pair->one->sha1, pair->two->sha1, &old_size,
-			    &new_size, &binary, 0, 0, print_line))
+	if (cgit_diff_files(pair, &old_size, &new_size, &binary,
+			    0, 0, print_line))
 		html("Error running diff");
 	if (binary)
 		html("Binary files differ\n");
