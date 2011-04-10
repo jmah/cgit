@@ -72,6 +72,7 @@ struct cgit_repo {
 	char *desc;
 	char *owner;
 	char *defbranch;
+	char *notesref;
 	char *module_link;
 	char *readme;
 	char *section;

@@ -425,6 +425,10 @@ repo.max-stats::
 repo.name::
 	The value to show as repository name. Default value: <repo.url>.
 
+repo.notesref::
+	The ref containing notes to display with each commit. If this is empty,
+	git will use the default of "refs/notes/commit". Default value: none.
+
 repo.owner::
 	A value used to identify the owner of the repository. Default value:
 	none.

@@ -70,6 +70,8 @@ void repo_config(struct cgit_repo *repo, const char *name, const char *value)
 		repo->owner = xstrdup(value);
 	else if (!strcmp(name, "defbranch"))
 		repo->defbranch = xstrdup(value);
+	else if (!strcmp(name, "notesref"))
+		repo->notesref = xstrdup(value);
 	else if (!strcmp(name, "snapshots"))
 		repo->snapshots = ctx.cfg.snapshots & cgit_parse_snapshots_mask(value);
 	else if (!strcmp(name, "enable-commit-graph"))
@@ -470,6 +472,7 @@ static int prepare_repo_cmd(struct cgit_context *ctx)
 		return 1;
 	}
 	cgit_prepare_repo_env(ctx->repo);
+	init_notes(NULL, ctx->repo->notesref, NULL, 0);
 	return 0;
 }
 
@@ -577,6 +580,8 @@ void print_repo(FILE *f, struct cgit_repo *repo)
 		fprintf(f, "repo.readme=%s\n", repo->readme);
 	if (repo->defbranch)
 		fprintf(f, "repo.defbranch=%s\n", repo->defbranch);
+	if (repo->notesref)
+		fprintf(f, "repo.notesref=%s\n", repo->notesref);
 	if (repo->module_link)
 		fprintf(f, "repo.module-link=%s\n", repo->module_link);
 	if (repo->section)
