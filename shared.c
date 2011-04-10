@@ -198,17 +198,45 @@ void cgit_diff_tree_cb(struct diff_queue_struct *q,
 	}
 }
 
-static int load_mmfile(mmfile_t *file, const unsigned char *sha1)
+static int load_textconv_mmfile(mmfile_t *file, struct diff_filespec *df)
+{
+	struct userdiff_driver *driver;
+
+	if (is_null_sha1(df->sha1))
+		return 1;
+
+	file->ptr = NULL;
+	driver = get_textconv(df);
+	if (driver && driver->textconv_cache)
+		file->ptr = notes_cache_get(driver->textconv_cache, df->sha1,
+		                            (size_t *)&file->size);
+	return file->ptr != NULL;
+}
+
+/*
+ * Prefer returning the cached textconv for each filespec. If a
+ * non-null filespec doesn't have a cached textconv, return the raw
+ * file for both. (Don't ever compare converted output with a raw
+ * file; just compare the raw files in that case.)
+ */
+static int load_mmfile_pair(struct diff_filepair *pair,
+                            mmfile_t *file1, mmfile_t *file2)
 {
 	enum object_type type;
 
-	if (is_null_sha1(sha1)) {
-		file->ptr = (char *)"";
-		file->size = 0;
-	} else {
-		file->ptr = read_sha1_file(sha1, &type, 
-		                           (unsigned long *)&file->size);
-	}
+	file1->ptr = file2->ptr = (char *)"";
+	file1->size = file2->size = 0;
+
+	if (load_textconv_mmfile(file1, pair->one) &&
+	    load_textconv_mmfile(file2, pair->two))
+		return 1; /* Found a textconv for both files */
+
+	if (!is_null_sha1(pair->one->sha1))
+		file1->ptr = read_sha1_file(pair->one->sha1, &type,
+		                            (unsigned long *)&file1->size);
+	if (!is_null_sha1(pair->two->sha1))
+		file2->ptr = read_sha1_file(pair->two->sha1, &type,
+		                            (unsigned long *)&file2->size);
 	return 1;
 }
 
@@ -259,10 +287,9 @@ int filediff_cb(void *priv, mmbuffer_t *mb, int nbuf)
 
 static const struct userdiff_funcname *diff_funcname_pattern(struct diff_filespec *one)
 {
-	if (!one->driver && S_ISREG(one->mode))
-		one->driver = userdiff_find_by_path(one->path);
+	get_textconv(one); /* Populates driver */
 	if (!one->driver)
-		one->driver = userdiff_find_by_name("default");
+		return NULL;
 	return one->driver->funcname.pattern ? &one->driver->funcname : NULL;
 }
 
@@ -277,8 +304,7 @@ int cgit_diff_files(struct diff_filepair *pair,
 	const struct userdiff_funcname *pe;
 
 	git_config(git_diff_ui_config, NULL);
-	if (!load_mmfile(&file1, pair->one->sha1) ||
-	    !load_mmfile(&file2, pair->two->sha1))
+	if (!load_mmfile_pair(pair, &file1, &file2))
 		return 1;
 
 	*old_size = file1.size;
